@@ -1,0 +1,64 @@
+# This is a password generator. It included features such as an option to include your own word, and an option to save the password to a 
+# file named "password.txt"
+# One problem is that if the "custom" word is longer then the length theres no failsafe to reject the word.
+
+import string
+import secrets
+
+# Define alphabet: letters, digits, and symbols. Also defines txt file.
+alphabet = string.ascii_letters + string.digits + "_@#$%^&*!?"
+
+
+def generate_password(length=8, word=None):
+    """Generate the password with an optional inserted word."""
+    if word and len(word) >= length:
+        return word  # Word is longer than desired length
+
+    remaining_length = length - (len(word) if word else 0)
+    random_part = ''.join(secrets.choice(alphabet) for _ in range(remaining_length))
+
+    if word:
+        insert_position = secrets.randbelow(len(random_part) + 1)
+        password = random_part[:insert_position] + word + random_part[insert_position:]
+    else:
+        password = random_part
+
+    return password
+
+
+def save_password(password, filename="passwords.txt"):
+    """Append the password to a text file."""
+    with open(filename, "a") as file:
+        file.write(password + "\n")
+    print(f"Password saved to {filename}")
+
+
+# Main Stuff
+try:
+    length = int(input("Enter the desired password length: "))
+except ValueError:
+    length = 8
+    print("Invalid input. Using default length of 8.")
+
+word = input("Enter a word to include in the password (leave blank for none): ").strip()
+word = word if word else None
+
+while True:
+    password = generate_password(length, word)
+    print(f"\nGenerated password: {password}")
+
+# Ask if they want to re-generate password
+    choice = input("Do you like this password? (y/n): ").lower().strip()
+    if choice == "y":
+        break  # Exits the confirmation (loop)
+    else:
+        print("Generating a new password...\n")
+
+# Save Option
+save_choice = input("Do you want to save this password to file? (y/n): ").lower().strip()
+if save_choice == "y":
+    save_password(password)
+else:
+    print("Password not saved.")
+
+print("\nEnd of Program")
