@@ -131,7 +131,6 @@ try:
 except ValueError:
     num_suggestions = 1
     print("Invalid input. Showing 1 suggestion at a time.")
-# NEW: generate multiple suggestions until the user picks one
 while True:
     passwords = [generate_password(length, word) for _ in range(num_suggestions)]
     print("\nGenerated password(s):")
@@ -149,7 +148,8 @@ while True:
             print("Generating a new set of passwords...\n")
             continue
         if 1 <= idx <= num_suggestions:
-            password = passwords[idx - 1]  
+            password = passwords[idx - 1]
+            break  
 
     print("Invalid choice. Please enter a valid number.\n")
 
