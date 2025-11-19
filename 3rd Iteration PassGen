@@ -1,0 +1,213 @@
+#Update 11/19/25 v3
+#   -Adjusted the segment of the program if your word is too long.
+#      -Like made Increase length and trim actually do something because it was kinda pointless.
+#   -Fixed issue where "choosing" your password doesn't end that program. Softlock
+#   -Reworked areas around saving  passwords.
+#      -You can choose multiple passwords like 1,3. Takes 1) and 3) and saves it
+#      -This also added a storage system of the passwords you liked.
+#   -Added comments for clarity.
+
+# PASSWORD GENERATOR PROGRAM
+
+# This program creates customizable passwords.
+# Features include:
+#   - Optional custom word inserted into the password
+#   - User-selected character types (letters, digits, symbols)
+#   - Automatic handling if the custom word is too long
+#   - Ability to generate multiple password suggestions at once
+#   - Option to select and save one or more passwords to a file
+
+
+import string
+import secrets
+
+# Define alphabet: letters, digits, and symbols. Also defines txt file.
+alphabet = string.ascii_letters + string.digits + "_@#$%^&*!?"
+
+# Generate a password with an optional inserted custom word
+def generate_password(length=8, word=None):
+    """Generate the password with an optional inserted word."""
+    if word and len(word) >= length:
+        return word  # Word is longer than desired length
+
+    remaining_length = length - (len(word) if word else 0)
+    random_part = ''.join(secrets.choice(alphabet) for _ in range(remaining_length))
+
+    if word:
+        insert_position = secrets.randbelow(len(random_part) + 1)
+        password = random_part[:insert_position] + word + random_part[insert_position:]
+    else:
+        password = random_part
+
+    return password
+
+# Save a password to a text file
+def save_password(password, filename="passwords.txt"):
+    """Append the password to a text file."""
+    with open(filename, "a") as file:
+        file.write(password + "\n")
+    print(f"Password saved to {filename}")
+
+# Ask a yes/no question and return True or False
+def ask_yes_no(prompt, default=None):
+    """Ask a yes/no question and return True for yes, False for no."""
+    while True:
+        choice = input(prompt).strip().lower()
+        if not choice and default is not None:
+            choice = default.lower()
+        if choice in ("y", "yes"):
+            return True
+        if choice in ("n", "no"):
+            return False
+        print("Please enter 'y' or 'n'.")
+
+# Let the user customize which character types are allowed
+def choose_character_set():
+    global alphabet  # We keep using the same global variable your function already uses
+
+    print("\nChoose which character types to include in the password:")
+    include_lower = ask_yes_no("Include lowercase letters (a-z)? (y/n): ", default="y")
+    include_upper = ask_yes_no("Include uppercase letters (A-Z)? (y/n): ", default="y")
+    include_digits = ask_yes_no("Include digits (0-9)? (y/n): ", default="y")
+    include_symbols = ask_yes_no("Include symbols (_@#$%^&*!?)? (y/n): ", default="y")
+
+    new_alphabet = ""
+    if include_lower:
+        new_alphabet += string.ascii_lowercase
+    if include_upper:
+        new_alphabet += string.ascii_uppercase
+    if include_digits:
+        new_alphabet += string.digits
+    if include_symbols:
+        new_alphabet += "_@#$%^&*!?"
+
+    if not new_alphabet:
+        print("You must choose at least one character type. Using default set.")
+        return  # Keep original alphabet
+
+    alphabet = new_alphabet  # Update the global used by generate_password
+
+# Handle cases where the custom word is too long
+def handle_custom_word_and_length(word, length):
+    while word and len(word) >= length:
+        print(f"\nYour custom word '{word}' is {len(word)} characters long,")
+        print(f"which must be shorter than the password length ({length}).")
+        print("Choose an option:")
+        print("  1) Increase password length (recommended)")
+        print("  2) Trim the word to a shorter version")
+        print("  3) Enter a new (shorter) word")
+        print("  4) Remove the custom word")
+
+        choice = input("Enter 1, 2, 3, or 4: ").strip()
+
+        if choice == "1":
+            # Require at least 3 random chars for security
+            min_length = len(word) + 3
+            if length < min_length:
+                length = min_length
+            print(f"Password length increased to {length}.\n")
+            break
+
+        elif choice == "2":
+            # Force user to choose a trimmed version shorter than total length
+            max_allowed = max(1, length - 3)
+            new_word = word[:max_allowed]
+            print(f"Word trimmed to '{new_word}'. (Room left for random characters)\n")
+            word = new_word
+            break
+
+        elif choice == "3":
+            new_word = input("Enter a new word (leave blank for none): ").strip()
+            word = new_word if new_word else None
+            if not word:
+                print("No custom word will be used.\n")
+            break
+
+        elif choice == "4":
+            word = None
+            print("Custom word removed.\n")
+            break
+
+        else:
+            print("Invalid choice. Try again.\n")
+
+    return word, length
+
+# MAIN PROGRAM
+# Ask for password length
+try:
+    length = int(input("Enter the desired password length: "))
+except ValueError:
+    length = 8
+    print("Invalid input. Using default length of 8.")
+
+# Optional custom word
+word = input("Enter a word to include in the password (leave blank for none): ").strip()
+word = word if word else None
+
+# Fix the 'word longer than length' problem
+word, length = handle_custom_word_and_length(word, length)
+
+# Let the user customize the character set
+choose_character_set()
+
+# Ask how many password suggestions to show at once
+try:
+    num_suggestions = int(input("\nHow many password suggestions do you want to see at once? (e.g., 3): "))
+    if num_suggestions <= 0:
+        raise ValueError
+except ValueError:
+    num_suggestions = 1
+    print("Invalid input. Showing 1 suggestion at a time.")
+
+# List selected passwords
+chosen_passwords = []
+
+# Generate password suggestions repeatedly until user finishes
+while True:
+    passwords = [generate_password(length, word) for _ in range(num_suggestions)]
+    print("\nGenerated password(s):")
+    for i, pw in enumerate(passwords, start=1):
+        print(f"  {i}) {pw}")
+
+    choice = input(
+        f"\nEnter the number(s) you like (e.g., 1 or 1,3), "
+        "or 0 to generate new ones, or 'done' to finish: "
+    ).strip().lower()
+
+    if choice == "done":
+        break
+
+    if choice == "0":
+        print("Generating a new set of passwords...\n")
+        continue
+
+    # Split multiple numbers
+    selected = choice.split(",")
+
+    valid = True
+    temp_list = []
+    for sel in selected:
+        sel = sel.strip()
+        if not sel.isdigit() or not (1 <= int(sel) <= num_suggestions):
+            valid = False
+            break
+        temp_list.append(passwords[int(sel) - 1])
+
+    if not valid:
+        print("Invalid selection. Try again.\n")
+        continue
+
+    chosen_passwords.extend(temp_list)
+    print("Password(s) added!\n")
+
+# Option to save each selected password
+if chosen_passwords:
+    for password in chosen_passwords:
+        save_choice = input(f"Save '{password}' to file? (y/n): ").lower().strip()
+        if save_choice == "y":
+            save_password(password)
+else:
+    print("Password not saved.")
+
+print("\nEnd of Program")
